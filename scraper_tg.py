@@ -7,7 +7,7 @@ from storage import is_sent, mark_sent
 from relevance import is_relevant, is_geo_allowed, relevance_score
 
 # Сколько часов назад смотреть в каналах (покрывает интервал между запусками)
-LOOKBACK_HOURS = 9
+LOOKBACK_HOURS = 168  # 7 дней для первого запуска; потом бот ловит всё свежее
 
 
 async def _read_channels() -> list[Vacancy]:

@@ -52,13 +52,12 @@ HH_SCHEDULE = "remote"
 HH_PER_PAGE = 20
 
 TELEGRAM_JOB_CHANNELS: list[str] = [
-    "edtech_jobs",
-    "online_school_jobs",
-    "remote_ru",
-    "hr_freelance",
-    "rabota_online_ru",
-    "workvacancy",          # вакансии удалённо РФ
-    "remotejobsru",
+    "edtech_vacancy",       # вакансии в EdTech — самый целевой канал
+    "rabota_online_ru",     # удалённая работа
+    "workvacancy",          # вакансии и фриланс
+    "vakansii_udalenka",    # вакансии удалёнка
+    "vakansii_ru",          # вакансии со всей России
+    "remote_ru",            # удалённая работа
 ]
 
 GETCOURSE_JOBS_URL = "https://getcourse.ru/jobs"

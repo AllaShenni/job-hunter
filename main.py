@@ -5,7 +5,6 @@ from zoneinfo import ZoneInfo
 
 from config import SCHEDULE_HOURS, TIMEZONE
 from searcher_habr import fetch_habr_vacancies
-from searcher_remotive import fetch_remotive_vacancies
 from scraper_getcourse import fetch_getcourse_vacancies
 from scraper_tg import fetch_telegram_vacancies
 from notifier import send_report, send_error
@@ -23,7 +22,6 @@ def run_search() -> None:
 
     sources = [
         ("Habr Career", fetch_habr_vacancies),
-        ("Remotive", fetch_remotive_vacancies),
         ("GetCourse Jobs", fetch_getcourse_vacancies),
         ("Telegram channels", fetch_telegram_vacancies),
     ]
