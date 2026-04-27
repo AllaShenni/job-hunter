@@ -71,4 +71,5 @@ def send_report(vacancies: list[Vacancy]) -> None:
 
 
 def send_error(error: str) -> None:
-    _send_message(f"⚠️ Ошибка в job-hunter:\n<code>{error[:500]}</code>")
+    tail = "\n".join(error.strip().splitlines()[-12:])
+    _send_message(f"⚠️ Ошибка в job-hunter:\n<code>{tail}</code>")
