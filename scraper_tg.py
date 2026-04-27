@@ -24,7 +24,7 @@ async def _read_channels() -> list[Vacancy]:
     results: list[Vacancy] = []
     since = datetime.now(timezone.utc) - timedelta(hours=LOOKBACK_HOURS)
 
-    string_session = os.getenv("TG_STRING_SESSION", "")
+    string_session = os.getenv("TG_STRING_SESSION", "").strip()
     if string_session:
         from telethon.sessions import StringSession
         session = StringSession(string_session)
