@@ -31,14 +31,18 @@ async def _read_channels() -> list[Vacancy]:
     else:
         session = "job_hunter_session"
 
-    async with TelegramClient(session, TG_API_ID, TG_API_HASH) as client:
+    client = TelegramClient(session, TG_API_ID, TG_API_HASH)
+    await client.connect()
+    try:
+        if not await client.is_user_authorized():
+            return []
+
         for channel in TELEGRAM_JOB_CHANNELS:
             try:
                 async for message in client.iter_messages(channel, limit=100):
                     if not message.date or message.date < since:
                         break
                     text = message.text or ""
-                    # Проверяем полный текст сообщения (заголовок + тело) + гео
                     if not text or not is_relevant(text) or not is_geo_allowed(text):
                         continue
 
@@ -46,7 +50,6 @@ async def _read_channels() -> list[Vacancy]:
                     if is_sent(vid):
                         continue
 
-                    # Ищем ссылку в entities сообщения
                     url = ""
                     if message.entities:
                         for ent in message.entities:
@@ -75,6 +78,8 @@ async def _read_channels() -> list[Vacancy]:
                     mark_sent(vid, f"tg_{channel}")
             except Exception:
                 continue
+    finally:
+        await client.disconnect()
 
     results.sort(key=lambda v: v.score, reverse=True)
     return results
