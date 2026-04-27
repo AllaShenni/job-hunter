@@ -1,0 +1,42 @@
+name: Job Hunter Search
+
+on:
+  schedule:
+    - cron: '0 4 * * *'    # 07:00 MSK (UTC+3)
+    - cron: '0 12 * * *'   # 15:00 MSK (UTC+3)
+  workflow_dispatch:         # ручной запуск для тестирования
+
+jobs:
+  search:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: .
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Restore dedup database
+        uses: actions/cache@v4
+        with:
+          path: sent_vacancies.db
+          key: sent-db-${{ github.run_id }}
+          restore-keys: |
+            sent-db-
+
+      - name: Run job search
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+          TG_API_ID: ${{ secrets.TG_API_ID }}
+          TG_API_HASH: ${{ secrets.TG_API_HASH }}
+          TG_STRING_SESSION: ${{ secrets.TG_STRING_SESSION }}
+        run: python run_once.py

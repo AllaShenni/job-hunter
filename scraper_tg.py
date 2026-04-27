@@ -1,4 +1,5 @@
 import asyncio
+import os
 from datetime import datetime, timedelta, timezone
 
 from searcher_hh import Vacancy
@@ -23,7 +24,14 @@ async def _read_channels() -> list[Vacancy]:
     results: list[Vacancy] = []
     since = datetime.now(timezone.utc) - timedelta(hours=LOOKBACK_HOURS)
 
-    async with TelegramClient("job_hunter_session", TG_API_ID, TG_API_HASH) as client:
+    string_session = os.getenv("TG_STRING_SESSION", "")
+    if string_session:
+        from telethon.sessions import StringSession
+        session = StringSession(string_session)
+    else:
+        session = "job_hunter_session"
+
+    async with TelegramClient(session, TG_API_ID, TG_API_HASH) as client:
         for channel in TELEGRAM_JOB_CHANNELS:
             try:
                 async for message in client.iter_messages(channel, limit=100):
