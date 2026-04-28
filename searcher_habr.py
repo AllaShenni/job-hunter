@@ -61,7 +61,7 @@ def fetch_habr_vacancies() -> list[Vacancy]:
                 salary_data = item.get("salary") or {}
                 salary = salary_data.get("title", "не указана")
 
-                slug = item.get("slug", "")
+                slug = item.get("slug", "") or str(item.get("id", ""))
                 url = f"https://career.habr.com/vacancies/{slug}" if slug else ""
 
                 v = Vacancy(
