@@ -24,9 +24,17 @@ async def _read_channels() -> list[Vacancy]:
     results: list[Vacancy] = []
     since = datetime.now(timezone.utc) - timedelta(hours=LOOKBACK_HOURS)
 
-    string_session = os.getenv("TG_STRING_SESSION", "").strip()
-    if string_session:
+    raw = os.getenv("TG_STRING_SESSION", "").strip()
+    if raw and len(raw) > 1:
         from telethon.sessions import StringSession
+        # Fix base64 padding: strip existing '=' then re-add correctly
+        version, data = raw[0], raw[1:].rstrip("=")
+        remainder = len(data) % 4
+        if remainder == 2:
+            data += "=="
+        elif remainder == 3:
+            data += "="
+        string_session = version + data
         session = StringSession(string_session)
     else:
         session = "job_hunter_session"
