@@ -4,8 +4,7 @@ from apscheduler.schedulers.blocking import BlockingScheduler
 from zoneinfo import ZoneInfo
 
 from config import SCHEDULE_HOURS, TIMEZONE
-from searcher_habr import fetch_habr_vacancies
-from scraper_getcourse import fetch_getcourse_vacancies
+from searcher_hh_rss import fetch_hh_vacancies
 from scraper_tg import fetch_telegram_vacancies
 from notifier import send_report, send_error
 
@@ -13,6 +12,10 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
 )
+# Silence noisy HTTP loggers — they dump full URLs (with bot tokens) at INFO level.
+# Token in URL must never appear in stdout/logs.
+for noisy in ("httpx", "httpcore", "telethon", "telethon.network", "telethon.client"):
+    logging.getLogger(noisy).setLevel(logging.WARNING)
 log = logging.getLogger(__name__)
 
 
@@ -21,8 +24,7 @@ def run_search() -> None:
     all_vacancies = []
 
     sources = [
-        ("Habr Career", fetch_habr_vacancies),
-        ("GetCourse Jobs", fetch_getcourse_vacancies),
+        ("hh.ru", fetch_hh_vacancies),
         ("Telegram channels", fetch_telegram_vacancies),
     ]
 
