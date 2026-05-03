@@ -78,6 +78,7 @@ TELEGRAM_JOB_CHANNELS: list[str] = [
     "vakansii_udalenka",    # вакансии удалёнка
     "vakansii_ru",          # вакансии со всей России
     "remote_ru",            # удалённая работа
+    "influencersoffuture",  # инфлюенсеры будущего — вакансии EdTech/онлайн-школы
 ]
 
 GETCOURSE_JOBS_URL = "https://getcourse.ru/jobs"
