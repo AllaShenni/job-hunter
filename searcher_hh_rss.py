@@ -19,7 +19,13 @@ import httpx
 from searcher_hh import Vacancy
 from config import SEARCH_QUERIES
 from storage import is_sent, mark_sent
-from relevance import is_relevant, is_geo_allowed, has_mandatory_phone_calls, relevance_score
+from relevance import (
+    has_mandatory_phone_calls,
+    is_geo_allowed,
+    is_rejected_title,
+    is_relevant,
+    relevance_score,
+)
 
 log = logging.getLogger(__name__)
 
@@ -116,7 +122,7 @@ def fetch_hh_vacancies() -> list[Vacancy]:
                 # (программист, дизайнер и т.п.), которые ложно срабатывают на
                 # NEGATIVE_ROLE_KEYWORDS.
                 base_text = f"{title} {snippet_clean}"
-                if not is_relevant(base_text):
+                if is_rejected_title(title) or not is_relevant(base_text):
                     continue
 
                 # Полную страницу используем ТОЛЬКО для проверки гео-ограничений

@@ -116,6 +116,106 @@ SCAM_PHRASES: list[str] = [
 ]
 
 
+# Продажи vs кураторство: Алле не нужны вакансии менеджеров по продажам,
+# но нужны те, где обязанностей куратора/администратора больше, чем продаж.
+SALES_MARKERS: list[str] = [
+    "менеджер по продажам", "менеджера по продажам", "специалист по продажам",
+    "оператор продаж", "отдел продаж", "план продаж", "продаж", "продавать",
+    # "sales" only as a job title: a bare "sales" also matches company names.
+    "моп", "sales manager", "head of sales", "sdr",
+    "лид", "закрывать сделк", "сделк", "воронк", "конверси",
+    "допродаж", "апсейл", "upsell", "холодн", "квалификация лидов",
+    "телемаркетинг", "видеопродаж",
+]
+# Отрицания убираются из текста до подсчёта: "без продаж" — плюс, а не минус.
+SALES_NEGATIONS: list[str] = [
+    "без продаж", "не продаж", "нет продаж", "без звонков", "без поиска клиентов",
+    "не нужно продавать", "не надо продавать", "без холодных",
+]
+CURATOR_MARKERS: list[str] = [
+    "куратор", "курирован", "администратор", "администрирован", "модератор",
+    "модерац", "вебинар", "сопровожден", "забот",
+    "поддержк", "студент", "ученик", "чат", "расписани", "домашн",
+    "обратная связь", "обратной связи", "техническ", "геткурс", "getcourse",
+]
+
+
+# Преподавание считается по корням слов: "преподавателя", "учителей" и т.п.
+# Сравнивается с кураторством, а не запрещается целиком: куратору часто нужно
+# "взаимодействовать с преподавателями".
+TEACHING_MARKERS: list[str] = [
+    "преподавател", "преподава", "учител", "репетитор",
+    "провод уроки", "ведение уроков", "вести уроки",
+]
+
+
+# Должности, которые Алле не нужны. Проверяются ТОЛЬКО в названии вакансии:
+# в теле кураторских вакансий часто есть "подчинение руководителю" и т.п.
+TITLE_REJECT_MARKERS: list[str] = [
+    "руководител", "директор", "head of", "director",
+    "преподавател", "учител", "репетитор", "teacher",
+]
+# "Помощник руководителя" — ассистентская роль, она Алле подходит.
+TITLE_ASSISTANT_MARKERS: list[str] = ["помощник", "ассистент", "assistant"]
+BOSS_MARKERS: list[str] = ["руководител", "директор", "head of", "director"]
+# Для постов Telegram названием считаем первую строку, но не длиннее этого
+TITLE_ZONE_CHARS = 150
+
+
+def title_of(text: str) -> str:
+    """Название вакансии в посте: первая непустая строка."""
+    first = next((line for line in text.splitlines() if line.strip()), "")
+    return first[:TITLE_ZONE_CHARS]
+
+
+def is_rejected_title(title: str) -> bool:
+    """True если в названии вакансии руководитель, директор или преподаватель."""
+    t = title.lower()
+    is_assistant = any(marker in t for marker in TITLE_ASSISTANT_MARKERS)
+    return any(
+        marker in t
+        for marker in TITLE_REJECT_MARKERS
+        if not (is_assistant and marker in BOSS_MARKERS)
+    )
+
+
+def _count_markers(text: str, markers: list[str]) -> int:
+    t = text.lower()
+    return sum(t.count(m) for m in markers)
+
+
+def _outweighs_curator_work(text: str, markers: list[str]) -> bool:
+    """True если маркеров чужой роли есть и их не меньше, чем кураторских."""
+    other = _count_markers(text, markers)
+    return other > 0 and other >= _count_markers(text, CURATOR_MARKERS)
+
+
+def _without_negations(text: str) -> str:
+    t = text.lower()
+    for phrase in SALES_NEGATIONS:
+        t = t.replace(phrase, " ")
+    return t
+
+
+def is_mostly_sales(text: str) -> bool:
+    """True если вакансия про продажи и продаж в ней не меньше, чем кураторской работы."""
+    return _outweighs_curator_work(_without_negations(text), SALES_MARKERS)
+
+
+def is_mostly_teaching(text: str) -> bool:
+    """True если вакансия про преподавание больше, чем про кураторство."""
+    return _outweighs_curator_work(text, TEACHING_MARKERS)
+
+
+def has_curator_signal(text: str) -> bool:
+    """True если в тексте есть хоть один признак работы куратора/администратора.
+
+    Применяется к длинным постам Telegram-каналов: отсекает маркетинг, PR,
+    анонсы мероприятий. Для hh.ru не применяется — там только короткий анонс.
+    """
+    return _count_markers(text, CURATOR_MARKERS) > 0
+
+
 def is_blocked_source(text: str) -> bool:
     """True если текст пришёл из нежелательного источника (или это его пересылка)."""
     t = text.lower()
@@ -146,6 +246,8 @@ def is_relevant(text: str) -> bool:
     if is_ukrainian(text):
         return False
     if is_blocked_source(text) or is_scam(text):
+        return False
+    if is_mostly_sales(text) or is_mostly_teaching(text):
         return False
     if has_negative_role(text):
         return False

@@ -6,7 +6,15 @@ from datetime import datetime, timedelta, timezone
 from searcher_hh import Vacancy
 from config import TG_API_ID, TG_API_HASH, TELEGRAM_JOB_CHANNELS
 from storage import is_sent, mark_sent
-from relevance import is_relevant, is_geo_allowed, is_blocked_source, relevance_score
+from relevance import (
+    has_curator_signal,
+    is_blocked_source,
+    is_geo_allowed,
+    is_rejected_title,
+    is_relevant,
+    relevance_score,
+    title_of,
+)
 
 log = logging.getLogger(__name__)
 
@@ -68,6 +76,8 @@ async def _read_channels() -> list[Vacancy]:
                     if not text or _forwarded_from_blocked(message):
                         continue
                     if not is_relevant(text) or not is_geo_allowed(text):
+                        continue
+                    if not has_curator_signal(text) or is_rejected_title(title_of(text)):
                         continue
 
                     vid = f"tg_{channel}_{message.id}"
