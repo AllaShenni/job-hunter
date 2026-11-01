@@ -98,6 +98,36 @@ RUSSIA_ONLY_PHRASES: list[str] = [
 ]
 
 
+# Источники, которые Алла не хочет видеть — в том числе их пересылки и репосты
+BLOCKED_SOURCE_MARKERS: list[str] = [
+    "influencersoffuture",
+    "инфлюенсеры будущего",
+    "influencers of future",
+]
+
+# Типичные признаки мусорных/мошеннических объявлений в каналах удалёнки
+SCAM_PHRASES: list[str] = [
+    "ставить лайки", "ставить лайк", "лайкать",
+    "простых задач в цифровой среде", "простые задания",
+    "в день без опыта", "₽ в день", "руб в день", "рублей в день",
+    "пассивный доход", "без вложений",
+    "оплатить обучение", "платное обучение", "стоимость обучения",
+    "предоплата", "оплатите доступ", "доступ к вакансиям",
+]
+
+
+def is_blocked_source(text: str) -> bool:
+    """True если текст пришёл из нежелательного источника (или это его пересылка)."""
+    t = text.lower()
+    return any(marker in t for marker in BLOCKED_SOURCE_MARKERS)
+
+
+def is_scam(text: str) -> bool:
+    """True если объявление похоже на мусор или развод."""
+    t = text.lower()
+    return any(phrase in t for phrase in SCAM_PHRASES)
+
+
 def is_ukrainian(text: str) -> bool:
     """True если текст написан на украинском языке."""
     t = text.lower()
@@ -114,6 +144,8 @@ def is_relevant(text: str) -> bool:
     """True если текст содержит хотя бы одно ключевое слово из BODY_KEYWORDS,
     не является украиноязычным и не относится к нерелевантным ролям."""
     if is_ukrainian(text):
+        return False
+    if is_blocked_source(text) or is_scam(text):
         return False
     if has_negative_role(text):
         return False

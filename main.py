@@ -3,10 +3,11 @@ import traceback
 from apscheduler.schedulers.blocking import BlockingScheduler
 from zoneinfo import ZoneInfo
 
-from config import SCHEDULE_HOURS, TIMEZONE
+from config import SCHEDULE_HOURS, TIMEZONE, SUPERJOB_API_KEY
 from searcher_hh_rss import fetch_hh_vacancies
+from searcher_superjob import fetch_superjob_vacancies
 from scraper_tg import fetch_telegram_vacancies
-from notifier import send_report, send_error
+from notifier import send_report, send_error, redact
 
 logging.basicConfig(
     level=logging.INFO,
@@ -27,6 +28,9 @@ def run_search() -> None:
         ("hh.ru", fetch_hh_vacancies),
         ("Telegram channels", fetch_telegram_vacancies),
     ]
+    # SuperJob needs a free app key (api.superjob.ru) in the SUPERJOB_API_KEY secret.
+    if SUPERJOB_API_KEY:
+        sources.append(("SuperJob", fetch_superjob_vacancies))
 
     for name, fetcher in sources:
         try:
@@ -34,7 +38,7 @@ def run_search() -> None:
             log.info(f"{name}: {len(found)} new vacancies")
             all_vacancies.extend(found)
         except Exception as exc:
-            log.error(f"{name} failed: {exc}")
+            log.error(f"{name} failed: {redact(str(exc))}")
             send_error(f"{name}: {traceback.format_exc()}")
 
     log.info(f"Total new vacancies: {len(all_vacancies)}")

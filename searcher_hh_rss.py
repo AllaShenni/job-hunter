@@ -10,6 +10,7 @@ RSS-фид публичный, не требует авторизации, от�
 (title, link, description, pubDate). Подробное описание вакансии при необходимости
 догружаем отдельным запросом по ссылке item.
 """
+import logging
 import re
 import xml.etree.ElementTree as ET
 from urllib.parse import quote_plus
@@ -19,6 +20,8 @@ from searcher_hh import Vacancy
 from config import SEARCH_QUERIES
 from storage import is_sent, mark_sent
 from relevance import is_relevant, is_geo_allowed, has_mandatory_phone_calls, relevance_score
+
+log = logging.getLogger(__name__)
 
 RSS_URL = "https://hh.ru/search/vacancy/rss"
 HEADERS = {
@@ -64,7 +67,8 @@ def _fetch_full_page(client: httpx.Client, url: str) -> str:
         resp = client.get(url, headers=HEADERS, timeout=10, follow_redirects=True)
         resp.raise_for_status()
         return _strip_html(resp.text)
-    except Exception:
+    except Exception as exc:
+        log.warning("hh.ru page not loaded (%s): %s", url, type(exc).__name__)
         return ""
 
 
@@ -72,6 +76,7 @@ def fetch_hh_vacancies() -> list[Vacancy]:
     """Главная точка входа — совместима с прежним API-парсером."""
     results: list[Vacancy] = []
     seen_ids: set[str] = set()
+    failed_queries = 0
 
     with httpx.Client(headers=HEADERS, timeout=15) as client:
         for query in SEARCH_QUERIES:
@@ -84,7 +89,9 @@ def fetch_hh_vacancies() -> list[Vacancy]:
                 resp = client.get(RSS_URL, params=params)
                 resp.raise_for_status()
                 root = ET.fromstring(resp.content)
-            except Exception:
+            except Exception as exc:
+                failed_queries += 1
+                log.warning("hh.ru RSS query %r failed: %s", query, type(exc).__name__)
                 continue
 
             for item in root.findall(".//item"):
@@ -135,6 +142,10 @@ def fetch_hh_vacancies() -> list[Vacancy]:
                 )
                 results.append(v)
                 mark_sent(vid, "hh")
+
+    # If every query failed, hh.ru is blocking us — surface it instead of "nothing found".
+    if failed_queries == len(SEARCH_QUERIES):
+        raise RuntimeError(f"hh.ru RSS: все {failed_queries} запросов завершились ошибкой")
 
     results.sort(key=lambda v: v.score, reverse=True)
     return results

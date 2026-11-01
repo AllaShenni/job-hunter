@@ -71,16 +71,17 @@ TELEGRAM_JOB_CHANNELS: list[str] = [
     # edmarketclubjob исключён: много self-promo от соискателей, мало вакансий —
     # фильтр негативных откликов будет дольше настраивать, чем смотреть вручную.
     "edujobs",              # вакансии в образовании
-    "razoom_jobs",          # EdTech международный (RU + Европа)
     "naudalenkebro",        # удалёнка широкого профиля
-    "rabota_online_ru",     # удалённая работа
-    "workvacancy",          # вакансии и фриланс
-    "vakansii_udalenka",    # вакансии удалёнка
-    "vakansii_ru",          # вакансии со всей России
-    "remote_ru",            # удалённая работа
-    "influencersoffuture",  # инфлюенсеры будущего — вакансии EdTech/онлайн-школы
+    # Удалены 01.11.2026 (проверено по t.me/s/<канал>):
+    #   razoom_jobs (последний пост 07.2025), rabota_online_ru (11.2022),
+    #   remote_ru (03.2023), vakansii_udalenka (04.2024),
+    #   workvacancy и vakansii_ru (постов нет);
+    #   influencersoffuture — вакансии за платной подпиской, отклики не смотрят.
+    #   Его пересылки режутся через BLOCKED_SOURCE_MARKERS в relevance.py.
+    # Не добавлены: vacanciesrus, rueventjob — через фильтр проходит маркетинг и мусор.
 ]
 
+# getcourse.ru/jobs возвращает 404 (проверено 01.11.2026) — источник отключён.
 GETCOURSE_JOBS_URL = "https://getcourse.ru/jobs"
 
 SCHEDULE_HOURS: list[int] = [7, 15]
