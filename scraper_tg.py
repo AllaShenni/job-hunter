@@ -1,11 +1,32 @@
 import asyncio
+import logging
 import os
 from datetime import datetime, timedelta, timezone
 
 from searcher_hh import Vacancy
 from config import TG_API_ID, TG_API_HASH, TELEGRAM_JOB_CHANNELS
 from storage import is_sent, mark_sent
-from relevance import is_relevant, is_geo_allowed, relevance_score
+from relevance import (
+    has_curator_signal,
+    is_blocked_source,
+    is_geo_allowed,
+    is_rejected_title,
+    is_relevant,
+    relevance_score,
+    title_of,
+)
+
+log = logging.getLogger(__name__)
+
+
+def _forwarded_from_blocked(message) -> bool:
+    """True if the post is a forward from a blocked channel (e.g. influencersoffuture)."""
+    fwd = getattr(message, "forward", None)
+    chat = getattr(fwd, "chat", None) if fwd else None
+    names = " ".join(
+        str(x) for x in (getattr(chat, "username", ""), getattr(chat, "title", "")) if x
+    )
+    return bool(names) and is_blocked_source(names)
 
 # Сколько часов назад смотреть в каналах (покрывает интервал между запусками)
 LOOKBACK_HOURS = 168  # 7 дней для первого запуска; потом бот ловит всё свежее
@@ -13,13 +34,10 @@ LOOKBACK_HOURS = 168  # 7 дней для первого запуска; пот�
 
 async def _read_channels() -> list[Vacancy]:
     if not TG_API_ID or not TG_API_HASH:
-        return []
+        raise RuntimeError("TG_API_ID / TG_API_HASH не заданы — Telegram-каналы не читаются")
 
-    try:
-        from telethon import TelegramClient
-        from telethon.tl.types import MessageEntityUrl, MessageEntityTextUrl
-    except ImportError:
-        return []
+    from telethon import TelegramClient
+    from telethon.tl.types import MessageEntityUrl, MessageEntityTextUrl
 
     results: list[Vacancy] = []
     since = datetime.now(timezone.utc) - timedelta(hours=LOOKBACK_HOURS)
@@ -43,7 +61,11 @@ async def _read_channels() -> list[Vacancy]:
     await client.connect()
     try:
         if not await client.is_user_authorized():
-            return []
+            # Raise so main.py reports it to Alla instead of silently skipping channels.
+            raise RuntimeError(
+                "Вход в Telegram недействителен (TG_STRING_SESSION) — каналы не читаются. "
+                "Нужно заново получить сессию через generate_session.py."
+            )
 
         for channel in TELEGRAM_JOB_CHANNELS:
             try:
@@ -51,7 +73,11 @@ async def _read_channels() -> list[Vacancy]:
                     if not message.date or message.date < since:
                         break
                     text = message.text or ""
-                    if not text or not is_relevant(text) or not is_geo_allowed(text):
+                    if not text or _forwarded_from_blocked(message):
+                        continue
+                    if not is_relevant(text) or not is_geo_allowed(text):
+                        continue
+                    if not has_curator_signal(text) or is_rejected_title(title_of(text)):
                         continue
 
                     vid = f"tg_{channel}_{message.id}"
@@ -84,7 +110,9 @@ async def _read_channels() -> list[Vacancy]:
                     )
                     results.append(v)
                     mark_sent(vid, f"tg_{channel}")
-            except Exception:
+            except Exception as exc:
+                # One broken channel must not stop the others, but it must be visible.
+                log.warning("Channel @%s skipped: %s: %s", channel, type(exc).__name__, exc)
                 continue
     finally:
         await client.disconnect()
