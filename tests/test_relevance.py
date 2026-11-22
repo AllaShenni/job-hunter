@@ -1,6 +1,7 @@
 from config import TELEGRAM_JOB_CHANNELS
 from relevance import (
     has_curator_signal,
+    is_blocked_employer,
     is_blocked_source,
     is_mostly_sales,
     is_mostly_teaching,
@@ -108,3 +109,20 @@ def test_daily_pay_bait_is_scam() -> None:
 
 def test_normal_vacancy_is_not_scam() -> None:
     assert not is_scam(CURATOR_VACANCY)
+
+
+def test_blocked_employers_are_rejected() -> None:
+    for company in (
+        "СО ЛАЙФ",
+        "Квантастика",
+        "Онлайн-школа Тетрика",
+        "Агентство Недвижимости Инфинити",
+    ):
+        text = f"{CURATOR_VACANCY}. Вакансия компании: {company}"
+        assert is_blocked_employer(text), company
+        assert not is_relevant(text), company
+
+
+def test_blocked_employer_needs_whole_word() -> None:
+    assert not is_blocked_employer("Куратор курса, делимся со лайфхаками и чатом")
+    assert is_relevant(f"{CURATOR_VACANCY}. Вакансия компании: Инфинити Школа")

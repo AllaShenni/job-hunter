@@ -8,6 +8,8 @@
   - Украиноязычные вакансии — отклоняем.
   - Вакансии SMM/таргетолог/контент — отклоняем.
 """
+import re
+
 from config import BODY_KEYWORDS, SKILLS_KEYWORDS
 
 # Фразы, подтверждающие работу из любой точки мира
@@ -104,6 +106,19 @@ BLOCKED_SOURCE_MARKERS: list[str] = [
     "инфлюенсеры будущего",
     "influencers of future",
 ]
+
+# Employers whose vacancies never fit Alla. Names checked on hh.ru 22.11.2026.
+# Matched as whole words in the vacancy text: the hh.ru RSS snippet
+# contains "Вакансия компании: <name>", Telegram posts usually name the company.
+BLOCKED_EMPLOYER_MARKERS: list[str] = [
+    "со лайф", "so life",
+    "квантастика", "kvantastika",
+    "тетрика", "tetrika",
+    "агентство недвижимости инфинити",
+]
+_BLOCKED_EMPLOYER_RE = re.compile(
+    r"(?<!\w)(?:" + "|".join(re.escape(m) for m in BLOCKED_EMPLOYER_MARKERS) + r")(?!\w)"
+)
 
 # Типичные признаки мусорных/мошеннических объявлений в каналах удалёнки
 SCAM_PHRASES: list[str] = [
@@ -222,6 +237,11 @@ def is_blocked_source(text: str) -> bool:
     return any(marker in t for marker in BLOCKED_SOURCE_MARKERS)
 
 
+def is_blocked_employer(text: str) -> bool:
+    """True если вакансия от работодателя из чёрного списка."""
+    return _BLOCKED_EMPLOYER_RE.search(text.lower()) is not None
+
+
 def is_scam(text: str) -> bool:
     """True если объявление похоже на мусор или развод."""
     t = text.lower()
@@ -245,7 +265,7 @@ def is_relevant(text: str) -> bool:
     не является украиноязычным и не относится к нерелевантным ролям."""
     if is_ukrainian(text):
         return False
-    if is_blocked_source(text) or is_scam(text):
+    if is_blocked_source(text) or is_blocked_employer(text) or is_scam(text):
         return False
     if is_mostly_sales(text) or is_mostly_teaching(text):
         return False
